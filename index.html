@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>River reserve watch</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F1F5F7; --surface:#FFFFFF; --ink:#14283B; --muted:#5B6F80;
+  --rule:#CBD8E0; --river:#2D6A8E; --in:#2E7D6B; --out:#B4462F; --pending:#C9811E;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1B26; --surface:#162635; --ink:#E4EDF3; --muted:#93A8B8;
+    --rule:#2A3E4F; --river:#6FB0D6; --in:#5FC2A8; --out:#E78469; --pending:#E6A64D;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1B26; --surface:#162635; --ink:#E4EDF3; --muted:#93A8B8;
+  --rule:#2A3E4F; --river:#6FB0D6; --in:#5FC2A8; --out:#E78469; --pending:#E6A64D;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+main{max-width:980px;margin:0 auto;padding:40px 20px 64px}
+.num{font-variant-numeric:tabular-nums}
+header p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+h1{margin:0;font-size:1.05rem;font-weight:600;letter-spacing:.01em}
+
+.hero{margin:40px 0 36px;padding-bottom:32px;border-bottom:2px solid var(--river)}
+.btc{font-size:clamp(2.6rem,9vw,5.2rem);font-weight:600;line-height:1;letter-spacing:-.03em}
+.btc small{font-size:.38em;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:.3em}
+.usd{font-size:1.35rem;margin-top:10px}
+.meta{margin-top:14px;color:var(--muted);font-size:.92rem;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.pending-note{color:var(--pending);font-weight:500}
+button{font:inherit;font-size:.9rem;color:var(--river);background:none;border:1px solid var(--river);
+  border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover{background:var(--river);color:var(--surface)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--river);outline-offset:2px}
+button[disabled]{opacity:.5;cursor:default}
+
+section{margin-top:36px}
+h2{font-size:1.15rem;font-weight:600;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 14px;font-size:.92rem;max-width:70ch}
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:.93rem}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-weight:500;color:var(--muted);font-size:.85rem}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+a{color:var(--river);text-decoration:none}
+a:hover{text-decoration:underline}
+.addr{font-size:.86rem}
+.kind{font-weight:600}
+.kind.in{color:var(--in)} .kind.out{color:var(--out)} .kind.internal{color:var(--muted)} .kind.pending{color:var(--pending)}
+.remove{border:0;padding:2px 6px;color:var(--muted)}
+.remove:hover{background:none;color:var(--out)}
+
+form{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+input{font:inherit;font-size:.9rem;color:var(--ink);background:var(--surface);border:1px solid var(--rule);
+  border-radius:6px;padding:7px 10px}
+input[name=address]{flex:1 1 360px;min-width:0}
+input[name=label]{flex:0 1 180px}
+.status{margin-top:10px;font-size:.9rem;min-height:1.4em}
+.status.err{color:var(--out)}
+.empty{padding:18px 14px;color:var(--muted)}
+
+footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--rule);color:var(--muted);font-size:.85rem;max-width:72ch}
+footer p{margin:0 0 8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>River reserve watch</h1>
+    <p>An independent check of the Bitcoin held at River's published reserve addresses, read straight from the chain.</p>
+  </header>
+
+  <div class="hero" aria-live="polite">
+    <div class="btc num" id="total">…<small>BTC</small></div>
+    <div class="usd num" id="usd">Loading balances</div>
+    <div class="meta">
+      <span id="block">Block —</span>
+      <span id="checked">Not checked yet</span>
+      <span id="pendingTotal" class="pending-note" hidden></span>
+      <button id="refresh" type="button">Check now</button>
+    </div>
+  </div>
+
+  <section>
+    <h2>Tracked addresses</h2>
+    <p class="sub">Add a new address when River rotates its reserve. Moves between tracked addresses count as internal, not as outflows.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Label</th><th>Address</th><th class="r">Confirmed BTC</th><th class="r">Pending BTC</th><th class="r">Transactions</th><th></th></tr></thead>
+        <tbody id="addrRows"></tbody>
+      </table>
+    </div>
+    <form id="addForm" autocomplete="off">
+      <input name="label" placeholder="Label, e.g. Reserve 2" aria-label="Label">
+      <input name="address" placeholder="bc1…" aria-label="Bitcoin address" required>
+      <button type="submit">Add address</button>
+    </form>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section>
+    <h2>Recent movements</h2>
+    <p class="sub">The latest transactions touching any tracked address, with the net change to the combined balance.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>When</th><th>Type</th><th class="r">Net change BTC</th><th class="r">Block</th><th>Transaction</th></tr></thead>
+        <tbody id="txRows"><tr><td colspan="5" class="empty">Loading movements</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Balances only. River's Proof of Reserves also checks liabilities, meaning what customers are owed, which this page can't see.</p>
+    <p>Addresses come from river.com. Data from the mempool.space public API, refreshed every 5 minutes. A new block lands about every 10 minutes. Not affiliated with River.</p>
+  </footer>
+</main>
+
+<script>
+const API = "https://mempool.space/api";
+const REFRESH_MS = 5 * 60 * 1000;
+
+// Addresses published by River. Add new ones here when River rotates its reserve.
+const DEFAULT_ADDRESSES = [
+  { label: "Reserve (river.com)", address: "bc1qeh5e4ndkrs9sxw8wed2yce69tkrg7t003rz4vk5jhkaf6knkem4q944qvt" }
+];
+const STORE_KEY = "river-reserve-watch:addresses";
+
+function loadAddresses(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (Array.isArray(saved) && saved.length) return saved;
+  }catch(e){}
+  return DEFAULT_ADDRESSES.slice();
+}
+function saveAddresses(list){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(list)); }catch(e){}
+}
+
+let addresses = loadAddresses();
+let timer = null;
+const $ = id => document.getElementById(id);
+
+const fmtBTC = (sats, dp=8) => (sats/1e8).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});
+const fmtSigned = sats => (sats>0?"+":sats<0?"−":"") + fmtBTC(Math.abs(sats));
+const fmtUSD = n => n.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
+const short = a => a.slice(0,10) + "…" + a.slice(-8);
+
+async function getJSON(path){
+  const res = await fetch(API + path);
+  if (!res.ok) throw new Error(`mempool.space returned ${res.status} for ${path}`);
+  return res.json();
+}
+
+async function refresh(){
+  const btn = $("refresh");
+  btn.disabled = true;
+  setStatus("");
+  try{
+    const [tip, prices] = await Promise.all([
+      getJSON("/blocks/tip/height"),
+      getJSON("/v1/prices").catch(() => null)
+    ]);
+    const results = await Promise.all(addresses.map(async a => {
+      const [info, txs] = await Promise.all([
+        getJSON(`/address/${a.address}`),
+        getJSON(`/address/${a.address}/txs`)
+      ]);
+      return { ...a, info, txs };
+    }));
+    render(tip, prices, results);
+  }catch(err){
+    setStatus(`Couldn't reach mempool.space: ${err.message}. The page will try again at the next refresh.`, true);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function render(tip, prices, results){
+  let confirmed = 0, pending = 0;
+  const rows = results.map(r => {
+    const c = r.info.chain_stats, m = r.info.mempool_stats;
+    const conf = c.funded_txo_sum - c.spent_txo_sum;
+    const pend = m.funded_txo_sum - m.spent_txo_sum;
+    confirmed += conf; pending += pend;
+    return `<tr>
+      <td>${escapeHTML(r.label)}</td>
+      <td class="addr"><a href="https://mempool.space/address/${r.address}" target="_blank" rel="noopener" title="${r.address}">${short(r.address)}</a></td>
+      <td class="r num">${fmtBTC(conf)}</td>
+      <td class="r num">${pend ? fmtSigned(pend) : "—"}</td>
+      <td class="r num">${(c.tx_count + m.tx_count).toLocaleString()}</td>
+      <td class="r"><button class="remove" type="button" data-addr="${r.address}" aria-label="Stop tracking ${escapeHTML(r.label)}">Remove</button></td>
+    </tr>`;
+  }).join("");
+  $("addrRows").innerHTML = rows || `<tr><td colspan="6" class="empty">No addresses tracked. Add River's published reserve address below.</td></tr>`;
+
+  $("total").innerHTML = `${fmtBTC(confirmed, 4)}<small>BTC</small>`;
+  const usdPrice = prices && prices.USD;
+  $("usd").textContent = usdPrice
+    ? `${fmtUSD(confirmed/1e8*usdPrice)} at ${fmtUSD(usdPrice)} per bitcoin`
+    : "USD price unavailable right now";
+  $("block").textContent = `Block ${Number(tip).toLocaleString()}`;
+  $("checked").textContent = `Checked ${new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"})}`;
+  const pt = $("pendingTotal");
+  if (pending){ pt.hidden = false; pt.textContent = `${fmtSigned(pending)} BTC waiting to confirm`; }
+  else pt.hidden = true;
+
+  renderTxs(results);
+}
+
+function renderTxs(results){
+  const tracked = new Set(results.map(r => r.address));
+  const seen = new Map();
+  results.forEach(r => r.txs.forEach(tx => seen.set(tx.txid, tx)));
+  const txs = [...seen.values()].sort((a,b) => (b.status.block_time||Infinity) - (a.status.block_time||Infinity)).slice(0, 25);
+
+  const html = txs.map(tx => {
+    const fromTracked = tx.vin.some(v => v.prevout && tracked.has(v.prevout.scriptpubkey_address));
+    const inSats = tx.vin.reduce((s,v) => s + (v.prevout && tracked.has(v.prevout.scriptpubkey_address) ? v.prevout.value : 0), 0);
+    const outSats = tx.vout.reduce((s,o) => s + (tracked.has(o.scriptpubkey_address) ? o.value : 0), 0);
+    const toOutside = tx.vout.some(o => o.scriptpubkey_address && !tracked.has(o.scriptpubkey_address));
+    const net = outSats - inSats;
+
+    let kind, cls;
+    if (!tx.status.confirmed){ kind = "Pending"; cls = "pending"; }
+    else if (!fromTracked){ kind = "Inflow"; cls = "in"; }
+    else if (!toOutside){ kind = "Internal"; cls = "internal"; }
+    else { kind = "Outflow"; cls = "out"; }
+
+    const when = tx.status.block_time
+      ? new Date(tx.status.block_time*1000).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})
+      : "Unconfirmed";
+    return `<tr>
+      <td>${when}</td>
+      <td class="kind ${cls}">${kind}</td>
+      <td class="r num">${fmtSigned(net)}</td>
+      <td class="r num">${tx.status.block_height ? tx.status.block_height.toLocaleString() : "—"}</td>
+      <td class="addr"><a href="https://mempool.space/tx/${tx.txid}" target="_blank" rel="noopener">${short(tx.txid)}</a></td>
+    </tr>`;
+  }).join("");
+  $("txRows").innerHTML = html || `<tr><td colspan="5" class="empty">No transactions found for the tracked addresses.</td></tr>`;
+}
+
+function setStatus(msg, isErr){
+  const s = $("status");
+  s.textContent = msg;
+  s.classList.toggle("err", !!isErr);
+}
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+$("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target;
+  const address = f.address.value.trim();
+  const label = f.label.value.trim() || `Reserve ${addresses.length + 1}`;
+  if (!/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,87}$/.test(address)){
+    setStatus("That doesn't look like a Bitcoin address. Check it and try again.", true);
+    return;
+  }
+  if (addresses.some(a => a.address === address)){
+    setStatus("That address is already tracked.", true);
+    return;
+  }
+  addresses.push({ label, address });
+  saveAddresses(addresses);
+  f.reset();
+  setStatus(`Tracking ${label}.`);
+  refresh();
+});
+
+$("addrRows").addEventListener("click", e => {
+  const btn = e.target.closest(".remove");
+  if (!btn) return;
+  addresses = addresses.filter(a => a.address !== btn.dataset.addr);
+  saveAddresses(addresses);
+  setStatus("Address removed.");
+  refresh();
+});
+
+$("refresh").addEventListener("click", refresh);
+
+refresh();
+timer = setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>
