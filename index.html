@@ -55,6 +55,7 @@ table{width:100%;border-collapse:collapse;font-size:.93rem}
 th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--rule);white-space:nowrap}
 th{font-weight:500;color:var(--muted);font-size:.85rem}
 tr:last-child td{border-bottom:0}
+.verify td:last-child{white-space:normal;min-width:320px}
 td.r,th.r{text-align:right}
 a{color:var(--river);text-decoration:none}
 a:hover{text-decoration:underline}
@@ -112,6 +113,34 @@ footer p{margin:0 0 8px}
       </table>
     </div>
     <p class="key" id="attChangeNote">Net movement at the reserve address since the latest attestation: <b id="attChange">…</b></p>
+  </section>
+
+  <section>
+    <h2>Independent verification</h2>
+    <p class="sub">All three parts of River's September 1, 2026 Proof of Reserves, checked independently (snapshot block 965,052).</p>
+    <div class="table-wrap">
+      <table class="verify">
+        <thead><tr><th>Check</th><th>Result</th><th>How</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Assets on-chain</td>
+            <td class="kind in">Reconciled</td>
+            <td>Reserve address balance matches attested assets of 33,737.53513283 BTC to the satoshi, after the movements since the snapshot.</td>
+          </tr>
+          <tr>
+            <td>Liabilities add up</td>
+            <td class="kind in">Verified</td>
+            <td>Rebuilt River's Merkle sum tree: 2,097,151 parent nodes checked, 0 sum and 0 hash mismatches. Total of 33,498.71382005 BTC matches published liabilities.</td>
+          </tr>
+          <tr>
+            <td>River controls the address</td>
+            <td class="kind in">Verified</td>
+            <td>Proof transaction sent 0.04034917 BTC (plus a 1,078 sat fee), matching the last seven digits of block 965,052's largest coinbase output of 3.14034917 BTC. The block was mined about 10.5 hours before the proof.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="key">Liabilities verified locally on Sep 30, 2026 with a script built from River's open-source proof-of-reserves code. This confirms the liabilities file is internally consistent and matches the published total. Only individual clients can confirm their own balances are included.</p>
   </section>
 
   <section>
@@ -175,6 +204,11 @@ const PROOFS = [
   liabSats: Math.round(parseFloat(p.liabilities) * 1e8)
 }));
 const LATEST = PROOFS[0];
+
+// Ownership-proof transactions checked by hand against their block's coinbase.
+const VERIFIED_PROOF_TXS = new Set([
+  "7414123681cbda276ccc3dc4b9f1095728caf3694964979d598d2052e65790aa"
+]);
 const $ = id => document.getElementById(id);
 
 const fmtBTC = (sats, dp=8) => (sats/1e8).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});
@@ -261,7 +295,8 @@ function renderTxs(results){
     const trackedOuts = tx.vout.filter(o => tracked.has(o.scriptpubkey_address));
 
     let kind, cls;
-    if (!tx.status.confirmed){ kind = "Pending"; cls = "pending"; }
+    if (VERIFIED_PROOF_TXS.has(tx.txid)){ kind = "Ownership proof, verified"; cls = "proof"; }
+    else if (!tx.status.confirmed){ kind = "Pending"; cls = "pending"; }
     else if (!fromTracked){
       if (trackedOuts.some(o => isRound(o.value))){ kind = "Possible internal move"; cls = "rotation"; }
       else { kind = "Inflow"; cls = "in"; }
