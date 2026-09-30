@@ -44,7 +44,7 @@ h1{margin:0;font-size:1.05rem;font-weight:600;letter-spacing:.01em}
 button{font:inherit;font-size:.9rem;color:var(--river);background:none;border:1px solid var(--river);
   border-radius:6px;padding:6px 12px;cursor:pointer}
 button:hover{background:var(--river);color:var(--surface)}
-button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--river);outline-offset:2px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--river);outline-offset:2px}
 button[disabled]{opacity:.5;cursor:default}
 
 section{margin-top:36px}
@@ -61,14 +61,7 @@ a:hover{text-decoration:underline}
 .addr{font-size:.86rem}
 .kind{font-weight:600}
 .kind.in{color:var(--in)} .kind.out{color:var(--out)} .kind.internal{color:var(--muted)} .kind.pending{color:var(--pending)}
-.remove{border:0;padding:2px 6px;color:var(--muted)}
-.remove:hover{background:none;color:var(--out)}
 
-form{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-input{font:inherit;font-size:.9rem;color:var(--ink);background:var(--surface);border:1px solid var(--rule);
-  border-radius:6px;padding:7px 10px}
-input[name=address]{flex:1 1 360px;min-width:0}
-input[name=label]{flex:0 1 180px}
 .status{margin-top:10px;font-size:.9rem;min-height:1.4em}
 .status.err{color:var(--out)}
 .empty{padding:18px 14px;color:var(--muted)}
@@ -98,18 +91,13 @@ footer p{margin:0 0 8px}
 
   <section>
     <h2>Tracked addresses</h2>
-    <p class="sub">Add a new address when River rotates its reserve. Moves between tracked addresses count as internal, not as outflows.</p>
+    <p class="sub">Reserve addresses published on river.com. Moves between them count as internal, not as outflows.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Label</th><th>Address</th><th class="r">Confirmed BTC</th><th class="r">Pending BTC</th><th class="r">Transactions</th><th></th></tr></thead>
+        <thead><tr><th>Label</th><th>Address</th><th class="r">Confirmed BTC</th><th class="r">Pending BTC</th><th class="r">Transactions</th></tr></thead>
         <tbody id="addrRows"></tbody>
       </table>
     </div>
-    <form id="addForm" autocomplete="off">
-      <input name="label" placeholder="Label, e.g. Reserve 2" aria-label="Label">
-      <input name="address" placeholder="bc1…" aria-label="Bitcoin address" required>
-      <button type="submit">Add address</button>
-    </form>
     <div class="status" id="status"></div>
   </section>
 
@@ -135,24 +123,10 @@ const API = "https://mempool.space/api";
 const REFRESH_MS = 5 * 60 * 1000;
 
 // Addresses published by River. Add new ones here when River rotates its reserve.
-const DEFAULT_ADDRESSES = [
+const ADDRESSES = [
   { label: "Reserve (river.com)", address: "bc1qeh5e4ndkrs9sxw8wed2yce69tkrg7t003rz4vk5jhkaf6knkem4q944qvt" }
 ];
-const STORE_KEY = "river-reserve-watch:addresses";
-
-function loadAddresses(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
-    if (Array.isArray(saved) && saved.length) return saved;
-  }catch(e){}
-  return DEFAULT_ADDRESSES.slice();
-}
-function saveAddresses(list){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(list)); }catch(e){}
-}
-
-let addresses = loadAddresses();
-let timer = null;
+const addresses = ADDRESSES;
 const $ = id => document.getElementById(id);
 
 const fmtBTC = (sats, dp=8) => (sats/1e8).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});
@@ -203,10 +177,9 @@ function render(tip, prices, results){
       <td class="r num">${fmtBTC(conf)}</td>
       <td class="r num">${pend ? fmtSigned(pend) : "—"}</td>
       <td class="r num">${(c.tx_count + m.tx_count).toLocaleString()}</td>
-      <td class="r"><button class="remove" type="button" data-addr="${r.address}" aria-label="Stop tracking ${escapeHTML(r.label)}">Remove</button></td>
     </tr>`;
   }).join("");
-  $("addrRows").innerHTML = rows || `<tr><td colspan="6" class="empty">No addresses tracked. Add River's published reserve address below.</td></tr>`;
+  $("addrRows").innerHTML = rows || `<tr><td colspan="5" class="empty">No addresses listed. Add River's published reserve addresses to ADDRESSES in the code.</td></tr>`;
 
   $("total").innerHTML = `${fmtBTC(confirmed, 4)}<small>BTC</small>`;
   const usdPrice = prices && prices.USD;
@@ -264,39 +237,10 @@ function escapeHTML(s){
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
-$("addForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const f = e.target;
-  const address = f.address.value.trim();
-  const label = f.label.value.trim() || `Reserve ${addresses.length + 1}`;
-  if (!/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,87}$/.test(address)){
-    setStatus("That doesn't look like a Bitcoin address. Check it and try again.", true);
-    return;
-  }
-  if (addresses.some(a => a.address === address)){
-    setStatus("That address is already tracked.", true);
-    return;
-  }
-  addresses.push({ label, address });
-  saveAddresses(addresses);
-  f.reset();
-  setStatus(`Tracking ${label}.`);
-  refresh();
-});
-
-$("addrRows").addEventListener("click", e => {
-  const btn = e.target.closest(".remove");
-  if (!btn) return;
-  addresses = addresses.filter(a => a.address !== btn.dataset.addr);
-  saveAddresses(addresses);
-  setStatus("Address removed.");
-  refresh();
-});
-
 $("refresh").addEventListener("click", refresh);
 
 refresh();
-timer = setInterval(refresh, REFRESH_MS);
+setInterval(refresh, REFRESH_MS);
 </script>
 </body>
 </html>
