@@ -88,6 +88,21 @@ footer p{margin:0 0 8px}
       <button id="refresh" type="button">Check now</button>
     </div>
   </div>
+    <section>
+    <h2>Last attestation</h2>
+    <p class="sub">River's published Proof of Reserves. Liabilities change daily, so coverage is only exact as of the attestation date.</p>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td>Date</td><td class="r" id="attDate"></td></tr>
+          <tr><td>Reserves</td><td class="r num" id="attRes"></td></tr>
+          <tr><td>Customer liabilities</td><td class="r num" id="attLiab"></td></tr>
+          <tr><td>Coverage</td><td class="r num" id="attCov"></td></tr>
+          <tr><td>Change in tracked balance since</td><td class="r num" id="attChange">…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
   <section>
     <h2>Tracked addresses</h2>
@@ -133,6 +148,18 @@ const fmtBTC = (sats, dp=8) => (sats/1e8).toLocaleString("en-US",{minimumFractio
 const fmtSigned = sats => (sats>0?"+":sats<0?"−":"") + fmtBTC(Math.abs(sats));
 const fmtUSD = n => n.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
 const short = a => a.slice(0,10) + "…" + a.slice(-8);
+
+// River's latest published Proof of Reserves (update monthly).
+const ATTESTATION = {
+  date: "September 1, 2026",
+  reservesSats: 3373753513283,
+  liabilitiesSats: 3349871382005
+};
+
+$("attDate").textContent = ATTESTATION.date;
+$("attRes").textContent = fmtBTC(ATTESTATION.reservesSats) + " BTC";
+$("attLiab").textContent = fmtBTC(ATTESTATION.liabilitiesSats) + " BTC";
+$("attCov").textContent = (ATTESTATION.reservesSats / ATTESTATION.liabilitiesSats * 100).toFixed(2) + "%";
 
 async function getJSON(path){
   const res = await fetch(API + path);
@@ -182,6 +209,7 @@ function render(tip, prices, results){
   $("addrRows").innerHTML = rows || `<tr><td colspan="5" class="empty">No addresses listed. Add River's published reserve addresses to ADDRESSES in the code.</td></tr>`;
 
   $("total").innerHTML = `${fmtBTC(confirmed, 4)}<small>BTC</small>`;
+  $("attChange").textContent = fmtSigned(confirmed - ATTESTATION.reservesSats) + " BTC";
   const usdPrice = prices && prices.USD;
   $("usd").textContent = usdPrice
     ? `${fmtUSD(confirmed/1e8*usdPrice)} at ${fmtUSD(usdPrice)} per bitcoin`
