@@ -2,7 +2,7 @@
 
 An independent monitor and verification of [River's Proof of Reserves](https://river.com/reserves), built from public data.
 
-**Live site:** [add your Vercel URL here]
+**Live site:** (https://river-reserve-watch.vercel.app/)
 
 ## What it does
 
