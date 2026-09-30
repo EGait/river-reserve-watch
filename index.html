@@ -61,6 +61,15 @@ a:hover{text-decoration:underline}
 .addr{font-size:.86rem}
 .kind{font-weight:600}
 .kind.in{color:var(--in)} .kind.out{color:var(--out)} .kind.internal{color:var(--muted)} .kind.pending{color:var(--pending)}
+.kind.rotation{color:var(--pending)} .kind.proof{color:var(--river)}
+.chart-wrap{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:16px 16px 8px;overflow-x:auto}
+.chart-wrap svg{display:block;width:100%;min-width:560px;height:auto}
+.chart-wrap text{fill:var(--muted);font-size:11px;font-family:inherit}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin:0 0 8px}
+.legend span::before{content:"";display:inline-block;width:18px;height:0;border-top:2px solid var(--river);vertical-align:middle;margin-right:6px}
+.legend span.liab::before{border-top:2px dashed var(--muted)}
+.key{margin:10px 0 0;font-size:.85rem;color:var(--muted);max-width:75ch}
+.key b{font-weight:600}
 
 .status{margin-top:10px;font-size:.9rem;min-height:1.4em}
 .status.err{color:var(--out)}
@@ -88,20 +97,21 @@ footer p{margin:0 0 8px}
       <button id="refresh" type="button">Check now</button>
     </div>
   </div>
-    <section>
-    <h2>Last attestation</h2>
-    <p class="sub">River's published Proof of Reserves. Liabilities change daily, so coverage is only exact as of the attestation date.</p>
-    <div class="table-wrap">
+
+  <section>
+    <h2>Proof of Reserves over time</h2>
+    <p class="sub">River's monthly attestations from river.com/reserves. Assets are Bitcoin in cold storage; liabilities are what clients own.</p>
+    <div class="chart-wrap">
+      <div class="legend"><span>Assets</span><span class="liab">Liabilities</span></div>
+      <svg id="porChart" viewBox="0 0 760 260" role="img" aria-label="River assets and liabilities by month"></svg>
+    </div>
+    <div class="table-wrap" style="margin-top:14px">
       <table>
-        <tbody>
-          <tr><td>Date</td><td class="r" id="attDate"></td></tr>
-          <tr><td>Reserves</td><td class="r num" id="attRes"></td></tr>
-          <tr><td>Customer liabilities</td><td class="r num" id="attLiab"></td></tr>
-          <tr><td>Coverage</td><td class="r num" id="attCov"></td></tr>
-          <tr><td>Net movement since attestation</td><td class="r num" id="attChange">…</td></tr>
-        </tbody>
+        <thead><tr><th>Attestation</th><th class="r">Assets BTC</th><th class="r">Liabilities BTC</th><th class="r">Surplus BTC</th><th class="r">Coverage</th></tr></thead>
+        <tbody id="porRows"></tbody>
       </table>
     </div>
+    <p class="key" id="attChangeNote">Net movement at the reserve address since the latest attestation: <b id="attChange">…</b></p>
   </section>
 
   <section>
@@ -125,6 +135,7 @@ footer p{margin:0 0 8px}
         <tbody id="txRows"><tr><td colspan="5" class="empty">Loading movements</td></tr></tbody>
       </table>
     </div>
+    <p class="key"><b>Possible internal move</b>: a round amount of 10 BTC or more to or from an address not on the tracked list. Treasury transfers usually look like this, so verify against river.com/reserves before treating it as an outflow. <b>Likely ownership proof</b>: a small spend within a week after an attestation. River proves it controls the reserve by sending a set amount each month.</p>
   </section>
 
   <footer>
@@ -142,24 +153,34 @@ const ADDRESSES = [
   { label: "Reserve (river.com)", address: "bc1qeh5e4ndkrs9sxw8wed2yce69tkrg7t003rz4vk5jhkaf6knkem4q944qvt" }
 ];
 const addresses = ADDRESSES;
+
+// River's published Proof of Reserves history (river.com/reserves). Add the newest proof at the top each month.
+const PROOFS = [
+  { date: "2026-09-01", assets: "33737.53513283", liabilities: "33498.71382005" },
+  { date: "2026-08-02", assets: "31581.58549802", liabilities: "31407.79027959" },
+  { date: "2026-07-10", assets: "26056.63060575", liabilities: "25712.62706983" },
+  { date: "2026-06-02", assets: "25336.69339419", liabilities: "25071.87133972" },
+  { date: "2026-05-05", assets: "25354.73234503", liabilities: "25159.02826376" },
+  { date: "2026-04-07", assets: "25369.76528921", liabilities: "25079.55220814" },
+  { date: "2026-03-03", assets: "25180.79472151", liabilities: "25108.52358101" },
+  { date: "2026-02-03", assets: "24710.86267502", liabilities: "24525.14585270" },
+  { date: "2026-01-07", assets: "24519.92357675", liabilities: "24233.44092943" },
+  { date: "2025-12-02", assets: "24246.96978118", liabilities: "23980.10479712" },
+  { date: "2025-11-04", assets: "23368.03262346", liabilities: "23163.69473052" },
+  { date: "2025-10-07", assets: "22602.07691316", liabilities: "22355.98944126" }
+].map(p => ({
+  ...p,
+  when: new Date(p.date + "T12:00:00"),
+  assetsSats: Math.round(parseFloat(p.assets) * 1e8),
+  liabSats: Math.round(parseFloat(p.liabilities) * 1e8)
+}));
+const LATEST = PROOFS[0];
 const $ = id => document.getElementById(id);
 
 const fmtBTC = (sats, dp=8) => (sats/1e8).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});
 const fmtSigned = sats => (sats>0?"+":sats<0?"−":"") + fmtBTC(Math.abs(sats));
 const fmtUSD = n => n.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
 const short = a => a.slice(0,10) + "…" + a.slice(-8);
-
-// River's latest published Proof of Reserves (update monthly).
-const ATTESTATION = {
-  date: "September 1, 2026",
-  reservesSats: 3373753513283,
-  liabilitiesSats: 3349871382005
-};
-
-$("attDate").textContent = ATTESTATION.date;
-$("attRes").textContent = fmtBTC(ATTESTATION.reservesSats) + " BTC";
-$("attLiab").textContent = fmtBTC(ATTESTATION.liabilitiesSats) + " BTC";
-$("attCov").textContent = (ATTESTATION.reservesSats / ATTESTATION.liabilitiesSats * 100).toFixed(2) + "%";
 
 async function getJSON(path){
   const res = await fetch(API + path);
@@ -209,7 +230,7 @@ function render(tip, prices, results){
   $("addrRows").innerHTML = rows || `<tr><td colspan="5" class="empty">No addresses listed. Add River's published reserve addresses to ADDRESSES in the code.</td></tr>`;
 
   $("total").innerHTML = `${fmtBTC(confirmed, 4)}<small>BTC</small>`;
-  $("attChange").textContent = fmtSigned(confirmed - ATTESTATION.reservesSats) + " BTC";
+  $("attChange").textContent = `${fmtSigned(confirmed - LATEST.assetsSats)} BTC (${fmtDate(LATEST.when)} to now)`;
   const usdPrice = prices && prices.USD;
   $("usd").textContent = usdPrice
     ? `${fmtUSD(confirmed/1e8*usdPrice)} at ${fmtUSD(usdPrice)} per bitcoin`
@@ -233,13 +254,21 @@ function renderTxs(results){
     const fromTracked = tx.vin.some(v => v.prevout && tracked.has(v.prevout.scriptpubkey_address));
     const inSats = tx.vin.reduce((s,v) => s + (v.prevout && tracked.has(v.prevout.scriptpubkey_address) ? v.prevout.value : 0), 0);
     const outSats = tx.vout.reduce((s,o) => s + (tracked.has(o.scriptpubkey_address) ? o.value : 0), 0);
-    const toOutside = tx.vout.some(o => o.scriptpubkey_address && !tracked.has(o.scriptpubkey_address));
+    const externalOuts = tx.vout.filter(o => o.scriptpubkey_address && !tracked.has(o.scriptpubkey_address));
+    const toOutside = externalOuts.length > 0;
     const net = outSats - inSats;
+    const isRound = sats => sats >= 10 * 1e8 && sats % 1e8 === 0;
+    const trackedOuts = tx.vout.filter(o => tracked.has(o.scriptpubkey_address));
 
     let kind, cls;
     if (!tx.status.confirmed){ kind = "Pending"; cls = "pending"; }
-    else if (!fromTracked){ kind = "Inflow"; cls = "in"; }
+    else if (!fromTracked){
+      if (trackedOuts.some(o => isRound(o.value))){ kind = "Possible internal move"; cls = "rotation"; }
+      else { kind = "Inflow"; cls = "in"; }
+    }
     else if (!toOutside){ kind = "Internal"; cls = "internal"; }
+    else if (externalOuts.some(o => isRound(o.value))){ kind = "Possible internal move"; cls = "rotation"; }
+    else if (Math.abs(net) < 0.1 * 1e8 && nearAttestation(tx.status.block_time)){ kind = "Likely ownership proof"; cls = "proof"; }
     else { kind = "Outflow"; cls = "out"; }
 
     const when = tx.status.block_time
@@ -265,7 +294,56 @@ function escapeHTML(s){
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
+function fmtDate(d){
+  return d.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
+}
+function nearAttestation(blockTime){
+  if (!blockTime) return false;
+  const t = blockTime * 1000, week = 7 * 24 * 3600 * 1000;
+  return PROOFS.some(p => t >= p.when.getTime() - 24 * 3600 * 1000 && t <= p.when.getTime() + week);
+}
+
+function renderProofs(){
+  $("porRows").innerHTML = PROOFS.map(p => {
+    const surplus = p.assetsSats - p.liabSats;
+    return `<tr>
+      <td>${fmtDate(p.when)}</td>
+      <td class="r num">${fmtBTC(p.assetsSats)}</td>
+      <td class="r num">${fmtBTC(p.liabSats)}</td>
+      <td class="r num">${fmtSigned(surplus)}</td>
+      <td class="r num">${(p.assetsSats / p.liabSats * 100).toFixed(2)}%</td>
+    </tr>`;
+  }).join("");
+
+  const pts = PROOFS.slice().reverse();
+  const W = 760, H = 260, L = 64, R = 16, T = 12, B = 30;
+  const vals = pts.flatMap(p => [p.assetsSats, p.liabSats]).map(v => v / 1e8);
+  const lo = Math.floor(Math.min(...vals) / 2000) * 2000;
+  const hi = Math.ceil(Math.max(...vals) / 2000) * 2000;
+  const t0 = pts[0].when.getTime(), t1 = pts[pts.length - 1].when.getTime();
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R);
+  const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+
+  let g = "";
+  for (let v = lo; v <= hi; v += 2000){
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)" stroke-width="1"/>`;
+    g += `<text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${(v / 1000).toFixed(0)}k</text>`;
+  }
+  pts.forEach((p, i) => {
+    if (i % 2 === 0 || i === pts.length - 1)
+      g += `<text x="${x(p.when.getTime())}" y="${H - 8}" text-anchor="middle">${p.when.toLocaleDateString("en-US", {month:"short", year:"2-digit"})}</text>`;
+  });
+  const line = key => pts.map((p, i) => `${i ? "L" : "M"}${x(p.when.getTime()).toFixed(1)},${y(p[key] / 1e8).toFixed(1)}`).join(" ");
+  g += `<path d="${line("liabSats")}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  g += `<path d="${line("assetsSats")}" fill="none" stroke="var(--river)" stroke-width="2.5"/>`;
+  pts.forEach(p => {
+    g += `<circle cx="${x(p.when.getTime())}" cy="${y(p.assetsSats / 1e8)}" r="4" fill="var(--river)"><title>${fmtDate(p.when)}: ${fmtBTC(p.assetsSats, 2)} BTC assets, ${fmtBTC(p.liabSats, 2)} BTC liabilities, ${(p.assetsSats / p.liabSats * 100).toFixed(2)}% coverage</title></circle>`;
+  });
+  $("porChart").innerHTML = g;
+}
+
 $("refresh").addEventListener("click", refresh);
+renderProofs();
 
 refresh();
 setInterval(refresh, REFRESH_MS);
