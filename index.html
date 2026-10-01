@@ -85,7 +85,7 @@ footer p{margin:0 0 8px}
 <main>
   <header>
     <h1>River reserve watch</h1>
-    <p>An independent check of the Bitcoin held at River's published reserve addresses, read straight from the chain.</p>
+    <p>An independent check of the Bitcoin held at River's published reserve address, with all three parts of the September 2026 Proof of Reserves verified.</p>
   </header>
 
   <div class="hero" aria-live="polite">
@@ -98,22 +98,6 @@ footer p{margin:0 0 8px}
       <button id="refresh" type="button">Check now</button>
     </div>
   </div>
-
-  <section>
-    <h2>Proof of Reserves over time</h2>
-    <p class="sub">River's monthly attestations from river.com/reserves. Assets are Bitcoin in cold storage; liabilities are what clients own.</p>
-    <div class="chart-wrap">
-      <div class="legend"><span>Assets</span><span class="liab">Liabilities</span></div>
-      <svg id="porChart" viewBox="0 0 760 260" role="img" aria-label="River assets and liabilities by month"></svg>
-    </div>
-    <div class="table-wrap" style="margin-top:14px">
-      <table>
-        <thead><tr><th>Attestation</th><th class="r">Assets BTC</th><th class="r">Liabilities BTC</th><th class="r">Surplus BTC</th><th class="r">Coverage</th></tr></thead>
-        <tbody id="porRows"></tbody>
-      </table>
-    </div>
-    <p class="key" id="attChangeNote">Net movement at the reserve address since the latest attestation: <b id="attChange">…</b></p>
-  </section>
 
   <section>
     <h2>Independent verification</h2>
@@ -144,15 +128,19 @@ footer p{margin:0 0 8px}
   </section>
 
   <section>
-    <h2>Tracked addresses</h2>
-    <p class="sub">Reserve addresses published on river.com. Moves between them count as internal, not as outflows.</p>
-    <div class="table-wrap">
+    <h2>Proof of Reserves over time</h2>
+    <p class="sub">River's monthly attestations from river.com/reserves. Assets are Bitcoin in cold storage; liabilities are what clients own.</p>
+    <div class="chart-wrap">
+      <div class="legend"><span>Assets</span><span class="liab">Liabilities</span></div>
+      <svg id="porChart" viewBox="0 0 760 260" role="img" aria-label="River assets and liabilities by month"></svg>
+    </div>
+    <div class="table-wrap" style="margin-top:14px">
       <table>
-        <thead><tr><th>Label</th><th>Address</th><th class="r">Confirmed BTC</th><th class="r">Pending BTC</th><th class="r">Transactions</th></tr></thead>
-        <tbody id="addrRows"></tbody>
+        <thead><tr><th>Attestation</th><th class="r">Assets BTC</th><th class="r">Liabilities BTC</th><th class="r">Surplus BTC</th><th class="r">Coverage</th></tr></thead>
+        <tbody id="porRows"></tbody>
       </table>
     </div>
-    <div class="status" id="status"></div>
+    <p class="key" id="attChangeNote">Net movement at the reserve address since the latest attestation: <b id="attChange">…</b></p>
   </section>
 
   <section>
@@ -165,6 +153,18 @@ footer p{margin:0 0 8px}
       </table>
     </div>
     <p class="key"><b>Possible internal move</b>: a round amount of 10 BTC or more to or from an address not on the tracked list. Treasury transfers usually look like this, so verify against river.com/reserves before treating it as an outflow. <b>Likely ownership proof</b>: a small spend within a week after an attestation. River proves it controls the reserve by sending a set amount each month.</p>
+  </section>
+
+  <section>
+    <h2>Tracked addresses</h2>
+    <p class="sub">Reserve addresses published on river.com. Moves between them count as internal, not as outflows.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Label</th><th>Address</th><th class="r">Confirmed BTC</th><th class="r">Pending BTC</th><th class="r">Transactions</th></tr></thead>
+        <tbody id="addrRows"></tbody>
+      </table>
+    </div>
+    <div class="status" id="status"></div>
   </section>
 
   <footer>
