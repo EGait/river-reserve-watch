@@ -100,6 +100,18 @@ footer p{margin:0 0 8px}
   </div>
 
   <section>
+    <h2>Tracked addresses</h2>
+    <p class="sub">Reserve addresses published on river.com. Moves between them count as internal, not as outflows.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Label</th><th>Address</th><th class="r">Confirmed BTC</th><th class="r">Pending BTC</th><th class="r">Transactions</th></tr></thead>
+        <tbody id="addrRows"></tbody>
+      </table>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section>
     <h2>Independent verification</h2>
     <p class="sub">All three parts of River's September 1, 2026 Proof of Reserves, checked independently (snapshot block 965,052).</p>
     <div class="table-wrap">
@@ -128,6 +140,26 @@ footer p{margin:0 0 8px}
   </section>
 
   <section>
+    <h2>Inside the liabilities tree</h2>
+    <p class="sub">What the September 1, 2026 liabilities file looks like. River splits and shuffles balances for privacy, so these are pieces of balances, not accounts.</p>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td>Lines in file</td><td class="r num">4,194,304</td></tr>
+          <tr><td>Nodes in the tree</td><td class="r num">4,194,303</td></tr>
+          <tr><td>Leaves (bottom row)</td><td class="r num">2,097,152 (2<sup>21</sup>)</td></tr>
+          <tr><td>Zero-value filler leaves</td><td class="r num">0</td></tr>
+          <tr><td>Largest leaf</td><td class="r num">0.04999997 BTC</td></tr>
+          <tr><td>Average leaf</td><td class="r num">0.01597343 BTC</td></tr>
+          <tr><td>Median leaf</td><td class="r num">0.01235709 BTC</td></tr>
+          <tr><td>Smallest leaf</td><td class="r num">0.00000001 BTC</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="key">Every leaf is under 0.05 BTC, so a 10 BTC balance appears as at least 200 separate pieces. That hides how large any one balance is, and the number of leaves says nothing about the number of clients. The tree reaches a power of two by splitting balances further rather than adding empty leaves.</p>
+  </section>
+
+  <section>
     <h2>Proof of Reserves over time</h2>
     <p class="sub">River's monthly attestations from river.com/reserves. Assets are Bitcoin in cold storage; liabilities are what clients own.</p>
     <div class="chart-wrap">
@@ -153,18 +185,6 @@ footer p{margin:0 0 8px}
       </table>
     </div>
     <p class="key"><b>Possible internal move</b>: a round amount of 10 BTC or more to or from an address not on the tracked list. Treasury transfers usually look like this, so verify against river.com/reserves before treating it as an outflow. <b>Likely ownership proof</b>: a small spend within a week after an attestation. River proves it controls the reserve by sending a set amount each month.</p>
-  </section>
-
-  <section>
-    <h2>Tracked addresses</h2>
-    <p class="sub">Reserve addresses published on river.com. Moves between them count as internal, not as outflows.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Label</th><th>Address</th><th class="r">Confirmed BTC</th><th class="r">Pending BTC</th><th class="r">Transactions</th></tr></thead>
-        <tbody id="addrRows"></tbody>
-      </table>
-    </div>
-    <div class="status" id="status"></div>
   </section>
 
   <footer>
