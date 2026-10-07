@@ -205,6 +205,7 @@ const addresses = ADDRESSES;
 
 // River's published Proof of Reserves history (river.com/reserves). Add the newest proof at the top each month.
 const PROOFS = [
+  { date: "2026-10-06", assets: "33404.73460549", liabilities: "33332.42473254" },
   { date: "2026-09-01", assets: "33737.53513283", liabilities: "33498.71382005" },
   { date: "2026-08-02", assets: "31581.58549802", liabilities: "31407.79027959" },
   { date: "2026-07-10", assets: "26056.63060575", liabilities: "25712.62706983" },
@@ -403,5 +404,9 @@ renderProofs();
 refresh();
 setInterval(refresh, REFRESH_MS);
 </script>
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
